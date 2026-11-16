@@ -250,6 +250,8 @@ const LINE={car:"#2563eb",traffic:"#d9480f",walk:"#6b7280"};
 function lsGet(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
 function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
 const S={trips:lsGet(LS_T,{}),view:"list",tripId:null,tab:"plan",day:null,mapDay:null,cfg:Object.assign({js:"",rest:"",kma:"",fb:null,fam:"",synced:false},lsGet(LS_C,{}))};
+const DEFAULT_JS="c41b7da34d9a206589a9ccd1e9ca1d29"; // 카카오 JavaScript 키: 등록 도메인에서만 동작하는 공개용 키
+if(!S.cfg.js)S.cfg.js=DEFAULT_JS;
 let col=null, drawToken=0;
 
 /* ---------- 도우미 ---------- */
@@ -327,7 +329,7 @@ function loadKakao(){
 }
 async function kget(url){
   if(!S.cfg.rest)throw new Error("REST 키 없음");
-  const r=await fetch(url,{headers:{Authorization:"KakaoAK "+S.cfg.rest}});
+  let r;try{r=await fetch(url,{headers:{Authorization:"KakaoAK "+S.cfg.rest}})}catch(e){throw new Error("앱 안에서 계산할 수 없는 경로")}
   let j=null;try{j=await r.json()}catch(e){}
   if(!r.ok)throw new Error((j&&(j.msg||j.message))||("HTTP "+r.status));
   return j;
@@ -406,6 +408,7 @@ async function fetchFcst(g,bt){
     try{const r=await fetch(u);txt=await r.text()}catch(e){throw new Error("기상청 API에 연결할 수 없습니다 (브라우저 차단 또는 네트워크)")}
     let j=null;try{j=JSON.parse(txt)}catch(e){}
     if(!j){const m=txt.match(/<(?:returnAuthMsg|errMsg|cmmMsgHeader)>([^<]+)/);throw new Error("기상청 API 오류: "+(m?m[1]:"응답 형식 오류"))}
+    const oe=j.OpenAPI_ServiceResponse&&j.OpenAPI_ServiceResponse.cmmMsgHeader;if(oe)throw new Error("기상청 API 오류: "+(oe.returnAuthMsg||oe.errMsg||"인증 실패")+(/NOT_REGISTERED/.test(oe.returnAuthMsg||oe.errMsg||"")?" (키 등록 직후에는 반영까지 시간이 걸릴 수 있습니다)":""));
     const h=j.response&&j.response.header,b=j.response&&j.response.body;
     if(!h||h.resultCode!=="00")throw new Error("기상청 API 오류: "+((h&&h.resultMsg)||"알 수 없음"));
     const arr=(b&&b.items&&b.items.item)||[];
@@ -520,7 +523,7 @@ function legStatic(a,b){
 }
 function legResult(a,b,r){
   const m=MOVE[b.move]?b.move:"car",link='<a href="'+esc(r.url||legLink(a,b,m))+'" target="_blank" rel="noopener">카카오맵 길찾기</a>';
-  if(!r.ok)return MOVE[m]+' · '+esc(r.msg)+' · '+link;
+  if(!r.ok){const R=6371000,D=Math.PI/180,x=(b.lng-a.lng)*D*Math.cos((a.lat+b.lat)/2*D),y=(b.lat-a.lat)*D;return MOVE[m]+' · 직선거리 '+km(Math.sqrt(x*x+y*y)*R)+' · <span>'+esc(r.msg)+'</span>'+link}
   let h='<b>'+MOVE[m]+' '+dur(r.min)+'</b><span class="num">'+km(r.dist)+'</span>'+(r.detail?'<span>'+esc(r.detail)+'</span>':'');
   const ta=mins(a.time),tb=mins(b.time);
   if(ta!=null&&tb!=null){const gap=tb-ta,stay=gap-Math.ceil(r.min);
@@ -691,7 +694,7 @@ function readSettings(){
   let fam=$("sFam").value.trim().replace(/[^A-Za-z0-9_-]/g,"");
   if(fb&&!fam)fam=newId("fam")+Math.random().toString(36).slice(2,10);
   if(fb&&fam.length<12){$("sErr").textContent="가족 코드는 12자 이상의 영문·숫자로 정해 주세요. 비워 두면 자동으로 만듭니다.";return null}
-  return {js:$("sJs").value.trim(),rest:$("sRest").value.trim(),kma:$("sKma").value.trim(),fb:fb||null,fam};
+  return {js:$("sJs").value.trim()||DEFAULT_JS,rest:$("sRest").value.trim(),kma:$("sKma").value.trim(),fb:fb||null,fam};
 }
 function applySettings(n){
   const o=S.cfg,reload=o.js!==n.js||JSON.stringify(o.fb)!==JSON.stringify(n.fb)||o.fam!==n.fam;
@@ -714,7 +717,7 @@ $("sTest").addEventListener("click",async()=>{
   try{if(n.js!==keep.js&&window.kakao)say("지도: 키를 바꿨습니다. 저장 후 다시 점검하세요.");else{await loadKakao();say("지도 SDK: 정상")}}catch(e){say("지도 SDK: 실패 — "+e.message)}
   const A={lat:37.5547,lng:126.9707},B={lat:37.5796,lng:126.9770};
   for(const m of ["car","traffic","walk"]){if(!n.rest){say(MOVE[m]+" 경로: REST 키 없음");continue}
-    try{const r=await fetchRoute(A,B,m);say(MOVE[m]+" 경로: 정상 (서울역→경복궁 "+dur(r.min)+")")}catch(e){say(MOVE[m]+" 경로: 실패 — "+(e.message==="Failed to fetch"?"브라우저에서 호출이 차단됨":e.message))}}
+    try{const r=await fetchRoute(A,B,m);say(MOVE[m]+" 경로: 정상 (서울역→경복궁 "+dur(r.min)+")")}catch(e){say(MOVE[m]+" 경로: 실패 — "+e.message+" (카카오맵 링크로 대체)")}}
   if(!n.kma)say("기상청 예보: 서비스 키 없음");
   else{try{const f=await fetchFcst(grid(A.lat,A.lng),baseTime(Date.now()));say("기상청 예보: 정상 ("+Object.keys(f.hours).length+"시간분 수신)")}catch(e){say("기상청 예보: 실패 — "+e.message)}}
   say(n.fb?(col?"가족 공유: 연결됨":"가족 공유: 저장 후 연결됩니다"):"가족 공유: 구성 없음 (이 기기에만 저장)");
