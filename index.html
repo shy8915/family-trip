@@ -605,7 +605,11 @@ function shareText(t){
   return L.join("\n");
 }
 async function copy(text,okMsg){
-  try{await navigator.clipboard.writeText(text);toast(okMsg)}catch(e){toast("복사하지 못했습니다. 브라우저 권한을 확인하세요.")}
+  try{await navigator.clipboard.writeText(text);toast(okMsg)}catch(e){
+    const out=$("sOut");
+    if($("dlgSet").open&&out){out.textContent=text;const r=document.createRange();r.selectNodeContents(out);const sel=getSelection();sel.removeAllRanges();sel.addRange(r);toast("자동 복사가 막혀 아래에 표시했습니다. 길게 눌러 복사하세요.")}
+    else toast("복사하지 못했습니다. 브라우저 권한을 확인하세요.");
+  }
 }
 
 /* ---------- 입력 ---------- */
