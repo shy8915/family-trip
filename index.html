@@ -252,6 +252,11 @@ function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}ca
 const S={trips:lsGet(LS_T,{}),view:"list",tripId:null,tab:"plan",day:null,mapDay:null,cfg:Object.assign({js:"",rest:"",kma:"",fb:null,fam:"",synced:false},lsGet(LS_C,{}))};
 const DEFAULT_JS="c41b7da34d9a206589a9ccd1e9ca1d29"; // 카카오 JavaScript 키: 등록 도메인에서만 동작하는 공개용 키
 if(!S.cfg.js)S.cfg.js=DEFAULT_JS;
+// Firebase 웹 앱 구성: 클라이언트 코드에 넣도록 설계된 공개 식별값. 데이터 보호는 Firestore 보안 규칙과 가족 코드가 담당
+const DEFAULT_FB={apiKey:"AIzaSyB8GfkesvY09xAnonxWwF2gHEH_bIh8_-A",authDomain:"family-trip-13a34.firebaseapp.com",projectId:"family-trip-13a34",storageBucket:"family-trip-13a34.firebasestorage.app",messagingSenderId:"1093207520086",appId:"1:1093207520086:web:100f4dca7123662aec1cf7"};
+if(!S.cfg.fb)S.cfg.fb=DEFAULT_FB;
+if(!S.cfg.fam){S.cfg.fam="fam"+Date.now().toString(36)+Math.random().toString(36).slice(2,12);S.cfg.synced=false}
+lsSet(LS_C,S.cfg);
 let col=null, drawToken=0;
 
 /* ---------- 도우미 ---------- */
@@ -689,7 +694,7 @@ function openSettings(){
   $("sFam").value=c.fam||"";$("sErr").textContent="";$("sOut").textContent="";$("dlgSet").showModal();
 }
 function readSettings(){
-  const fb=parseFb($("sFb").value);
+  const fb=parseFb($("sFb").value)||(($("sFb").value.trim())?false:DEFAULT_FB);
   if(fb===false){$("sErr").textContent="Firebase 구성에서 apiKey와 projectId를 찾지 못했습니다. 콘솔의 firebaseConfig 전체를 붙여 넣어 주세요.";return null}
   let fam=$("sFam").value.trim().replace(/[^A-Za-z0-9_-]/g,"");
   if(fb&&!fam)fam=newId("fam")+Math.random().toString(36).slice(2,10);
