@@ -376,6 +376,7 @@ pre:empty{display:none}
     <div class="row"><button type="button" class="btn" id="sTest">연결 테스트</button><button type="button" class="btn" id="sExport">백업 파일 저장</button><label class="btn" style="flex-direction:row;color:var(--ink)">백업 불러오기<input id="sImport" type="file" accept="application/json,.json" hidden></label></div>
     <pre id="sOut"></pre>
   </fieldset>
+  <div class="row between"><span class="small muted">앱 버전 <b id="sVer"></b></span><button type="button" class="btn sm" id="sUpd">업데이트 확인</button></div>
   <p class="small muted">지도·장소·경로: 카카오맵 API · 날씨: 기상청 단기예보 조회서비스(공공데이터포털)</p>
   <p class="err" id="sErr"></p>
   <div class="row between"><a class="small" href="https://github.com/shy8915/family-trip#readme" id="sGuide" target="_blank" rel="noopener">키 발급 안내</a><span class="row"><button type="button" class="btn ghost" data-close>닫기</button><button class="btn primary">저장</button></span></div>
@@ -390,7 +391,7 @@ pre:empty{display:none}
 <script>
 (function(){
 "use strict";
-const APP_VERSION="20261117172934";
+const APP_VERSION="20261117173241";
 const $=id=>document.getElementById(id);
 const KIND={sight:"관광",stay:"숙소",food:"식사",move:"이동",etc:"기타"};
 const MOVE={car:"자가용",traffic:"대중교통",walk:"도보"};
@@ -942,6 +943,7 @@ function parseFb(txt){
   return o.apiKey&&o.projectId?o:false;
 }
 function openSettings(){
+  $("sVer").textContent=verLabel(APP_VERSION);
   const c=S.cfg;$("sJs").value=c.js;$("sRest").value=c.rest;$("sKma").value=c.kma;
   $("sFb").value=c.fb?Object.keys(c.fb).map(k=>k+': "'+c.fb[k]+'"').join(",\n"):"";
   $("sFam").value=c.fam||"";$("sErr").textContent="";$("sOut").textContent="";$("dlgSet").showModal();
@@ -968,6 +970,7 @@ $("sInvite").addEventListener("click",()=>{
   const code=btoa(unescape(encodeURIComponent(JSON.stringify(n)))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
   copy(location.origin+location.pathname+"#join="+code,"초대 링크를 복사했습니다. 저장을 눌러 이 기기에도 적용하세요.");
 });
+$("sUpd").addEventListener("click",()=>checkUpdate(true));
 $("sTest").addEventListener("click",async()=>{
   const n=readSettings();if(!n)return;const out=$("sOut"),L=[];const say=s=>{L.push(s);out.textContent=L.join("\n")};
   const keep=S.cfg;S.cfg=Object.assign({},keep,n);routeCache.clear();wxCache.clear();
@@ -1036,13 +1039,14 @@ function tryJoin(){
 
 /* ---------- 자동 업데이트: 설치한 앱을 열거나 다시 볼 때 새 버전이 있으면 바로 바꿔 줌 ---------- */
 let updBusy=false,lastChk=0;
-async function checkUpdate(){
-  if(updBusy||Date.now()-lastChk<20000)return;
-  if(document.querySelector("dialog[open]"))return;
+async function checkUpdate(force){
+  if(updBusy||(!force&&Date.now()-lastChk<4000))return;
+  if(!force&&document.querySelector("dialog[open]"))return;
   updBusy=true;lastChk=Date.now();
   try{
     const r=await fetch("version.json?t="+Date.now(),{cache:"no-store"});
     if(r.ok){const j=await r.json();
+      if(force&&j.version===APP_VERSION){toast("이미 최신 버전이에요")}
       if(j.version&&j.version!==APP_VERSION){
         try{sessionStorage.setItem("ft.updated",j.version)}catch(e){}
         location.replace(location.pathname+"?v="+encodeURIComponent(j.version));return}}
@@ -1050,8 +1054,12 @@ async function checkUpdate(){
   updBusy=false;
 }
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")checkUpdate()});
-window.addEventListener("focus",checkUpdate);
-setTimeout(checkUpdate,1500);
+const verLabel=v=>v.length>=12?(+v.slice(4,6))+"/"+(+v.slice(6,8))+" "+v.slice(8,10)+":"+v.slice(10,12):v;
+window.addEventListener("focus",()=>checkUpdate());
+window.addEventListener("pageshow",()=>checkUpdate());
+window.addEventListener("online",()=>checkUpdate());
+setTimeout(checkUpdate,800);
+setInterval(()=>{if(document.visibilityState==="visible")checkUpdate()},120000);
 try{if(sessionStorage.getItem("ft.updated")===APP_VERSION){sessionStorage.removeItem("ft.updated");setTimeout(()=>toast("새 버전으로 업데이트했어요"),600)}}catch(e){}
 if(/[?&]v=/.test(location.search)&&!location.hash)history.replaceState(null,"",location.pathname);
 render();
