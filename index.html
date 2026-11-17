@@ -230,6 +230,46 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.76rem;background:var(
 pre:empty{display:none}
 .seg{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
 
+
+/* 날씨 탭 */
+.wxplaces{padding:0 2px}
+.pchip{flex:0 0 auto;display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 11px;font-size:.82rem;font-weight:600;color:var(--muted);max-width:70vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pchip svg.i{width:14px;height:14px}
+.pchip[aria-selected="true"]{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.wxcard{position:relative;overflow:hidden;border-radius:20px;padding:16px 16px 14px;color:var(--band-ink);background:radial-gradient(130% 120% at 100% 0%,#3d6fb6 0%,#25446f 45%,var(--band) 100%);box-shadow:var(--shadow-l)}
+.wxcard.skel{height:170px;background:linear-gradient(90deg,var(--surface) 0%,var(--surface-2) 50%,var(--surface) 100%);background-size:200% 100%;animation:sk 1.2s linear infinite;box-shadow:var(--shadow)}
+@keyframes sk{to{background-position:-200% 0}}
+.wxtop{display:flex;justify-content:space-between;align-items:flex-start}
+.wxplace{display:flex;align-items:center;gap:4px;font-size:.84rem;color:var(--band-muted);font-weight:600}
+.wxplace svg.i{width:14px;height:14px}
+.wxnow{font-size:3.2rem;font-weight:200;line-height:1;letter-spacing:-.05em;margin:6px 0 4px}
+.wxsky{font-size:.88rem;color:var(--band-ink)}
+.wxbig svg{width:76px;height:76px;filter:drop-shadow(0 6px 14px rgba(0,0,0,.25))}
+.wxstats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.14);font-size:.76rem;color:var(--band-muted)}
+.wxstats b{display:block;color:var(--band-ink);font-size:1rem;font-weight:600}
+.wxtip{margin-top:10px;font-size:.84rem;background:rgba(255,255,255,.1);border-radius:10px;padding:8px 10px}
+.wxstrip{overflow-x:auto;background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);padding:4px 0 10px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.wxstrip::-webkit-scrollbar{display:none}
+.wxinner{position:relative}
+.wxcurve{display:block}
+.wxt{font:600 11px var(--font);fill:var(--ink)}
+.wxcols{display:flex}
+.wxcol{flex:0 0 56px;display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 0;border-radius:12px}
+.wxcol.on{background:var(--accent-soft)}
+.wxcol .wxi{width:26px;height:26px}
+.wxh{font-size:.76rem;color:var(--muted);font-weight:600}
+.wxcol.on .wxh{color:var(--accent)}
+.wxp{font-size:.72rem;color:var(--faint);min-height:1em}
+.wxp.hi{color:var(--accent);font-weight:700}
+.wxbarbox{height:30px;display:flex;align-items:flex-end}
+.wxbar{display:block;width:14px;border-radius:3px 3px 0 0;background:var(--accent);opacity:.35}
+.wxw{font-size:.66rem;color:var(--faint)}
+@media (prefers-reduced-motion:no-preference){
+  .wxline{stroke-dasharray:2000;stroke-dashoffset:2000;animation:draw 1.2s ease forwards .15s}
+  @keyframes draw{to{stroke-dashoffset:0}}
+  .wxbig svg{animation:floaty 4s ease-in-out infinite}
+  @keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+}
 /* 움직임: 카드가 차례로 떠오르고, 해가 천천히 빛나고, 누르면 살짝 눌림 */
 @media (prefers-reduced-motion:no-preference){
   .rise{opacity:0;animation:rise .45s cubic-bezier(.2,.8,.2,1) forwards}
@@ -350,7 +390,7 @@ pre:empty{display:none}
 <script>
 (function(){
 "use strict";
-const APP_VERSION="20261117165329";
+const APP_VERSION="20261117172934";
 const $=id=>document.getElementById(id);
 const KIND={sight:"관광",stay:"숙소",food:"식사",move:"이동",etc:"기타"};
 const MOVE={car:"자가용",traffic:"대중교통",walk:"도보"};
@@ -372,7 +412,8 @@ const IC={
   bus:'<rect x="5" y="3.5" width="14" height="14" rx="3"/><path d="M5 11h14M8 20.5v-3M16 20.5v-3"/><circle cx="8.5" cy="14.3" r=".6"/><circle cx="15.5" cy="14.3" r=".6"/>',
   walk:'<circle cx="13" cy="4" r="1.8"/><path d="M9 21l2.5-6.5L14 17v4M8 11l3-3 3 2 2.5 3M11 8l-1 6.5"/>',
   pin:'<path d="M12 21s7-6.1 7-11.5A7 7 0 0 0 5 9.5C5 14.9 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
-  arrow:'<path d="M5 12h14M13 6l6 6-6 6"/>'
+  arrow:'<path d="M5 12h14M13 6l6 6-6 6"/>',
+  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/>'
 };
 const ic=(n,c)=>'<svg class="i'+(c?" "+c:"")+'" viewBox="0 0 24 24" aria-hidden="true">'+IC[n]+'</svg>';
 const MIC={car:"car",traffic:"bus",walk:"walk"};
@@ -567,6 +608,68 @@ function daySummary(f,date){
   const sky=Object.keys(words).sort((a,b)=>words[b]-words[a])[0]||"";
   return {sky,tmn,tmx,pop};
 }
+
+/* ---------- 날씨 탭: 시간대별 단기예보 ---------- */
+const WXI={
+  sun:'<circle cx="12" cy="12" r="4.2" fill="#f4ac3d" stroke="none"/><path d="M12 3v1.6M12 19.4V21M3 12h1.6M19.4 12H21M5.6 5.6l1.1 1.1M17.3 17.3l1.1 1.1M5.6 18.4l1.1-1.1M17.3 6.7l1.1-1.1" stroke="#f4ac3d"/>',
+  moon:'<path d="M19 14.5A7.5 7.5 0 0 1 9.5 5a7.5 7.5 0 1 0 9.5 9.5z" fill="#c9b37a" stroke="none"/>',
+  part:'<circle cx="9" cy="9" r="3.6" fill="#f4ac3d" stroke="none"/><path d="M8 19h9a3.5 3.5 0 0 0 .3-7 5 5 0 0 0-9.5 1.3A2.9 2.9 0 0 0 8 19z" fill="#c9d3e0" stroke="none"/>',
+  cloud:'<path d="M7 18.5h10a4 4 0 0 0 .4-8 5.6 5.6 0 0 0-10.8 1.5A3.3 3.3 0 0 0 7 18.5z" fill="#aab6c6" stroke="none"/>',
+  rain:'<path d="M7 14.5h10a4 4 0 0 0 .4-8 5.6 5.6 0 0 0-10.8 1.5A3.3 3.3 0 0 0 7 14.5z" fill="#97a6b9" stroke="none"/><path d="M9 17l-1 3M13 17l-1 3M17 17l-1 3" stroke="#1c69d4"/>',
+  snow:'<path d="M7 14.5h10a4 4 0 0 0 .4-8 5.6 5.6 0 0 0-10.8 1.5A3.3 3.3 0 0 0 7 14.5z" fill="#aab6c6" stroke="none"/><circle cx="9" cy="18.5" r="1" fill="#7fa8e6" stroke="none"/><circle cx="13" cy="20" r="1" fill="#7fa8e6" stroke="none"/><circle cx="16.5" cy="18" r="1" fill="#7fa8e6" stroke="none"/>'
+};
+function wxKind(h,hr){const p=+h.PTY||0,sk=+h.SKY||1;if(p===3)return"snow";if(p)return"rain";if(sk===4)return"cloud";if(sk===3)return"part";return(hr<6||hr>=19)?"moon":"sun"}
+const wxIc=k=>'<svg class="wxi" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">'+WXI[k]+'</svg>';
+function wxPlaces(t,date){
+  const day=itemsOn(t,date).filter(hasXY),seen={},out=[];
+  day.concat((t.items||[]).filter(i=>hasXY(i)&&i.kind==="stay")).forEach(i=>{const k=i.lat.toFixed(2)+","+i.lng.toFixed(2);if(!seen[k]){seen[k]=1;out.push(i)}});
+  if(!out.length){const a=(t.items||[]).filter(hasXY)[0];if(a)out.push(a)}
+  return out;
+}
+function wxView(t,days){
+  if(!S.wxDay||days.indexOf(S.wxDay)<0)S.wxDay=S.day;
+  const pl=wxPlaces(t,S.wxDay);
+  if(!pl.some(p=>p.id===S.wxPlace))S.wxPlace=pl[0]?pl[0].id:null;
+  let h=chips(days,S.wxDay,"wxDay");
+  if(pl.length>1)h+='<div class="days wxplaces">'+pl.map(p=>'<button class="pchip" data-act="wxPlace" data-id="'+esc(p.id)+'" aria-selected="'+(p.id===S.wxPlace)+'">'+ic("pin")+esc(p.title)+'</button>').join("")+'</div>';
+  h+='<div id="wxBox"><div class="wxcard skel"></div></div>';
+  return h;
+}
+function drawWx(t){
+  const box=$("wxBox");if(!box)return;
+  const p=(t.items||[]).filter(i=>i.id===S.wxPlace)[0];
+  if(!S.cfg.kma){box.innerHTML='<div class="empty">날씨 예보는 가족 초대 링크로 설정하면 보여요.</div>';return}
+  if(!p){box.innerHTML='<div class="empty">일정에 장소를 검색해서 넣으면<br>그곳의 시간대별 날씨가 나와요.</div>';return}
+  const date=S.wxDay,my=drawToken;
+  forecast(p.lat,p.lng).then(f=>{
+    if(my!==drawToken||!box.isConnected)return;
+    if(!f.ok){box.innerHTML='<div class="empty">'+esc(f.msg)+'</div>';return}
+    const d=date.replace(/-/g,""),hrs=Object.keys(f.hours).filter(k=>k.slice(0,8)===d).sort();
+    if(!hrs.length){const last=Object.keys(f.hours).sort().pop();box.innerHTML='<div class="empty">아직 이 날의 예보가 나오지 않았어요.<br><span class="small">지금은 '+(last?(+last.slice(4,6))+'/'+(+last.slice(6,8))+'까지':'며칠 뒤까지')+' 예보가 나와 있어요. 여행일이 가까워지면 자동으로 보여요.</span></div>';return}
+    const rows=hrs.map(k=>{const h=f.hours[k],hr=+k.slice(8,10);return{hr,k:wxKind(h,hr),tmp:+h.TMP,pop:+h.POP||0,reh:+h.REH,wsd:+h.WSD,pcp:h.PCP,sky:skyText(h.SKY,h.PTY)}}).filter(r=>!isNaN(r.tmp));
+    const s=daySummary(f,date)||{};
+    const nowH=new Date().getHours(),isToday=date===today();
+    const cur=isToday?(rows.filter(r=>r.hr>=nowH)[0]||rows[rows.length-1]):rows.reduce((a,b)=>b.tmp>a.tmp?b:a,rows[0]);
+    const avg=(a,k)=>Math.round(a.reduce((s,r)=>s+(isNaN(r[k])?0:r[k]),0)/a.length);
+    const rainy=rows.filter(r=>r.pop>=40&&(!isToday||r.hr>=nowH));
+    let tip=rainy.length?(rainy[0].hr+'시부터 비 소식이 있어요. 우산을 챙기세요.'):(s.tmn!=null&&s.tmn<=3?'아침 기온이 낮아요. 아이들 겉옷을 챙기세요.':(s.tmx!=null&&s.tmx>=30?'한낮이 더워요. 물과 모자를 챙기세요.':'나들이하기 괜찮은 날씨예요.'));
+    // 기온 곡선
+    const W=56,H=86,n=rows.length,minT=Math.min(...rows.map(r=>r.tmp)),maxT=Math.max(...rows.map(r=>r.tmp)),rg=Math.max(maxT-minT,4);
+    const y=v=>26+(1-(v-minT)/rg)*(H-40);
+    const pts=rows.map((r,i)=>[i*W+W/2,y(r.tmp)]);
+    const path=pts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" ");
+    const area=path+" L"+pts[n-1][0]+" "+H+" L"+pts[0][0]+" "+H+" Z";
+    const svg='<svg class="wxcurve" width="'+n*W+'" height="'+H+'" viewBox="0 0 '+n*W+' '+H+'"><defs><linearGradient id="wxg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--sun)" stop-opacity=".35"/><stop offset="1" stop-color="var(--sun)" stop-opacity="0"/></linearGradient></defs><path d="'+area+'" fill="url(#wxg)"/><path class="wxline" d="'+path+'" fill="none" stroke="var(--sun)" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>'+pts.map((p,i)=>'<circle cx="'+p[0]+'" cy="'+p[1]+'" r="'+(rows[i]===cur?4.5:2.6)+'" fill="'+(rows[i]===cur?"var(--accent)":"var(--surface)")+'" stroke="'+(rows[i]===cur?"#fff":"var(--sun)")+'" stroke-width="2"/><text x="'+p[0]+'" y="'+(p[1]-8)+'" text-anchor="middle" class="wxt">'+Math.round(rows[i].tmp)+'°</text>').join("")+'</svg>';
+    let html='<div class="wxcard"><div class="wxtop"><div><p class="wxplace">'+ic("pin")+esc(p.title)+'</p><p class="wxnow num">'+Math.round(cur.tmp)+'°</p><p class="wxsky">'+esc(cur.sky||s.sky||"")+' · '+(isToday?cur.hr+'시 기준':'낮 최고')+'</p></div><div class="wxbig">'+wxIc(cur.k)+'</div></div>'+
+      '<div class="wxstats num"><span>최저 <b>'+(s.tmn!=null?Math.round(s.tmn)+'°':'–')+'</b></span><span>최고 <b>'+(s.tmx!=null?Math.round(s.tmx)+'°':'–')+'</b></span><span>강수 <b>'+(s.pop!=null?s.pop+'%':'–')+'</b></span><span>습도 <b>'+(isNaN(avg(rows,"reh"))?'–':avg(rows,"reh")+'%')+'</b></span></div>'+
+      '<p class="wxtip">'+esc(tip)+'</p></div>';
+    html+='<div class="sec"><h2>시간대별</h2><span>옆으로 넘겨 보세요</span></div><div class="wxstrip" id="wxStrip"><div class="wxinner" style="width:'+n*W+'px">'+svg+'<div class="wxcols">'+rows.map(r=>'<div class="wxcol'+(r===cur?' on':'')+'"><span class="wxh num">'+(r.hr===nowH&&isToday?'지금':r.hr+'시')+'</span>'+wxIc(r.k)+'<span class="wxp num'+(r.pop>=40?' hi':'')+'">'+(r.pop?r.pop+'%':'')+'</span><span class="wxbarbox"><i class="wxbar" style="height:'+Math.max(2,r.pop*0.28)+'px"></i></span><span class="wxw num">'+(isNaN(r.wsd)?'':r.wsd.toFixed(0)+'m/s')+'</span></div>').join("")+'</div></div></div>';
+    html+='<p class="wx-src">기상청 단기예보 '+(+f.base.date.slice(4,6))+'/'+(+f.base.date.slice(6))+' '+f.base.time.slice(0,2)+'시 발표 · '+esc(p.title)+' 위치 기준</p>';
+    box.innerHTML=html;
+    const st=$("wxStrip"),ci=rows.indexOf(cur);if(st&&ci>2)st.scrollLeft=(ci-2)*W;
+    box.querySelectorAll(".wxcard,.sec,.wxstrip").forEach((e,i)=>{e.classList.add("rise");e.style.animationDelay=i*60+"ms"});
+  });
+}
 function wxPlace(t,date){const it=itemsOn(t,date).filter(hasXY);if(it.length)return it[0];const all=(t.items||[]).filter(hasXY);return all.filter(i=>i.kind==="stay")[0]||all[0]||null}
 function fillWeather(t){
   document.querySelectorAll("[data-wxd]").forEach(el=>{
@@ -605,7 +708,7 @@ function render(){
   $("abTitle").textContent=inTrip?t.title:"우리 가족 여행수첩";
   $("sync").style.display=inTrip?"none":"";
   const tb=$("tabbar");tb.hidden=!inTrip;document.body.classList.toggle("has-tabs",inTrip);
-  if(inTrip)$("tabIn").innerHTML=[["plan","cal","일정"],["map","map","지도"],["all","list","한눈에"],["check","check","준비물"]].map(x=>'<button data-act="tab" data-tab="'+x[0]+'" aria-selected="'+(S.tab===x[0])+'">'+ic(x[1])+x[2]+'</button>').join("");
+  if(inTrip)$("tabIn").innerHTML=[["plan","cal","일정"],["map","map","지도"],["wx","sun","날씨"],["all","list","한눈에"],["check","check","준비물"]].map(x=>'<button data-act="tab" data-tab="'+x[0]+'" aria-selected="'+(S.tab===x[0])+'">'+ic(x[1])+x[2]+'</button>').join("");
   const fab=$("fab");
   if(!inTrip){fab.hidden=false;fab.setAttribute("data-act","newTrip");fab.innerHTML=ic("plus")+"새 여행"}
   else if(S.tab==="plan"){fab.hidden=false;fab.setAttribute("data-act","newItem");fab.innerHTML=ic("plus")+"일정"}
@@ -640,7 +743,7 @@ function tripView(t){
   if(S.tab==="plan"||S.tab==="all"){
     h+='<section class="head"><span class="pill num" style="align-self:flex-start">'+esc(dday(t))+'</span><h1>'+esc(t.title)+'</h1><p class="dates num">'+esc(full(t.start))+' – '+esc(md(t.end))+' · '+(n?n+"박 "+(n+1)+"일":"당일")+'</p><p class="muted small">'+esc(t.dest||"여행지 미정")+(stays.length?' · 숙소 '+esc(stays.join(", ")):'')+'</p>'+(t.memo?'<p class="memo">'+esc(t.memo)+'</p>':'')+'</section>';
   }
-  h+=S.tab==="plan"?planView(t,days):S.tab==="map"?mapView(t,days):S.tab==="all"?allView(t,days):checkView(t);
+  h+=S.tab==="plan"?planView(t,days):S.tab==="map"?mapView(t,days):S.tab==="wx"?wxView(t,days):S.tab==="all"?allView(t,days):checkView(t);
   return h;
 }
 function chips(days,sel,act,withAll){
@@ -738,6 +841,7 @@ function after(t){
   if(S.tab==="plan"){loadLegs(t);fillWeather(t)}
   else if(S.tab==="all")fillWeather(t);
   else if(S.tab==="map")drawMap(t);
+  else if(S.tab==="wx")drawWx(t);
   const f=$("fCheck");
   if(f)f.addEventListener("submit",e=>{e.preventDefault();const v=$("ckNew").value.trim();if(!v)return;t.checklist.push({id:newId("c"),text:v,done:false});commit(t);const n=$("ckNew");if(n)n.focus()});
 }
@@ -902,6 +1006,8 @@ document.addEventListener("click",e=>{
   else if(a==="editTrip")openTrip(t);
   else if(a==="tab"){S.tab=b.getAttribute("data-tab");if(S.tab==="map")S.mapDay=S.day;render();window.scrollTo(0,0)}
   else if(a==="day"){S.day=b.getAttribute("data-day");if(b.getAttribute("data-go"))S.tab="plan";render()}
+  else if(a==="wxDay"){S.wxDay=b.getAttribute("data-day");S.day=S.wxDay;S.noAnim=false;render()}
+  else if(a==="wxPlace"){S.wxPlace=b.getAttribute("data-id");render()}
   else if(a==="mapDay"){S.mapDay=b.getAttribute("data-day");if(S.mapDay!=="all")S.day=S.mapDay;render()}
   else if(a==="newItem")openItem(null);
   else if(a==="editItem"){const id=b.getAttribute("data-id");openItem(t.items.filter(x=>x.id===id)[0])}
