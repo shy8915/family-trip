@@ -377,7 +377,7 @@ pre:empty{display:none}
     <pre id="sOut"></pre>
   </fieldset>
   <div class="row between"><span class="small muted">앱 버전 <b id="sVer"></b></span><button type="button" class="btn sm" id="sUpd">업데이트 확인</button></div>
-  <p class="small muted">지도·장소·경로: 카카오맵 API · 날씨: 기상청 단기예보 조회서비스(공공데이터포털)</p>
+  <p class="small muted">지도·장소·경로: 카카오맵 API · 날씨: 기상청 단기예보 조회서비스(공공데이터포털), Open-Meteo(CC BY 4.0)</p>
   <p class="err" id="sErr"></p>
   <div class="row between"><a class="small" href="https://github.com/shy8915/family-trip#readme" id="sGuide" target="_blank" rel="noopener">키 발급 안내</a><span class="row"><button type="button" class="btn ghost" data-close>닫기</button><button class="btn primary">저장</button></span></div>
 </form></dialog>
@@ -391,7 +391,7 @@ pre:empty{display:none}
 <script>
 (function(){
 "use strict";
-const APP_VERSION="20261117173241";
+const APP_VERSION="20261117174059";
 const $=id=>document.getElementById(id);
 const KIND={sight:"관광",stay:"숙소",food:"식사",move:"이동",etc:"기타"};
 const MOVE={car:"자가용",traffic:"대중교통",walk:"도보"};
@@ -568,14 +568,38 @@ function baseTime(nowMs){ // 발표시각 02·05·08·11·14·17·20·23시(KST)
   return {date:k.getUTCFullYear()+pad(k.getUTCMonth()+1)+pad(k.getUTCDate()),time:pad(b)+"00"};
 }
 const wxCache=new Map();
+/* 예보: 기상청 키가 있으면 기상청 단기예보(약 3일)를 우선 쓰고, 그 밖의 날짜와 키가 없을 때는 Open-Meteo(키 불필요, 최대 16일)로 채움 */
 function forecast(lat,lng){
-  const g=grid(lat,lng),bt=baseTime(Date.now()),key=g.nx+","+g.ny+","+bt.date+bt.time;
+  const g=grid(lat,lng),bt=baseTime(Date.now()),key=g.nx+","+g.ny+","+bt.date+bt.time+(S.cfg.kma?"k":"o");
   if(!wxCache.has(key)){
-    let cached=null;try{cached=JSON.parse(sessionStorage.getItem("wx."+key))}catch(e){}
-    wxCache.set(key,cached?Promise.resolve(cached):fetchFcst(g,bt).then(v=>{try{sessionStorage.setItem("wx."+key,JSON.stringify(v))}catch(e){}return v}).catch(e=>({ok:false,msg:e.message||"예보 조회 실패"})));
+    let cached=null;try{cached=JSON.parse(sessionStorage.getItem("wx2."+key))}catch(e){}
+    const job=async()=>{
+      const [om,km]=await Promise.all([fetchOM(lat,lng).catch(e=>null),S.cfg.kma?fetchFcst(g,bt).catch(e=>null):Promise.resolve(null)]);
+      if(!om&&!km)throw new Error("날씨 정보를 불러오지 못했어요. 인터넷 연결을 확인해 주세요.");
+      const hours=Object.assign({},om?om.hours:{}),kd={};
+      if(km)Object.keys(km.hours).forEach(k=>{if(km.hours[k].TMP!=null){hours[k]=Object.assign({},hours[k]||{},km.hours[k]);kd[k.slice(0,8)]=1}});
+      return {ok:true,hours,base:km?km.base:null,kmaDays:kd};
+    };
+    wxCache.set(key,cached?Promise.resolve(cached):job().then(v=>{try{sessionStorage.setItem("wx2."+key,JSON.stringify(v))}catch(e){}return v}).catch(e=>({ok:false,msg:e.message||"예보 조회 실패"})));
   }
   return wxCache.get(key);
 }
+function wmo(c){ // WMO 날씨코드 → 기상청 SKY/PTY 형식
+  c=+c;if([71,73,75,77,85,86].includes(c))return{SKY:4,PTY:3};
+  if([80,81,82].includes(c))return{SKY:4,PTY:4};
+  if((c>=51&&c<=67)||c>=95)return{SKY:4,PTY:1};
+  if(c===0||c===1)return{SKY:1,PTY:0};if(c===2)return{SKY:3,PTY:0};return{SKY:4,PTY:0};
+}
+async function fetchOM(lat,lng){
+  const u="https://api.open-meteo.com/v1/forecast?latitude="+lat.toFixed(4)+"&longitude="+lng.toFixed(4)+"&hourly=temperature_2m,precipitation_probability,weather_code,relative_humidity_2m,wind_speed_10m&wind_speed_unit=ms&timezone=Asia%2FSeoul&forecast_days=16";
+  const r=await fetch(u);if(!r.ok)throw new Error("HTTP "+r.status);
+  const j=await r.json(),H=j.hourly||{},hours={};
+  (H.time||[]).forEach((t,i)=>{const k=t.slice(0,4)+t.slice(5,7)+t.slice(8,10)+t.slice(11,13)+"00",w=wmo(H.weather_code[i]);
+    if(H.temperature_2m[i]==null)return;
+    hours[k]={TMP:H.temperature_2m[i],POP:H.precipitation_probability[i]==null?0:H.precipitation_probability[i],REH:H.relative_humidity_2m[i],WSD:H.wind_speed_10m[i],SKY:w.SKY,PTY:w.PTY}});
+  return {hours};
+}
+const wxSrc=(f,date)=>f.kmaDays&&f.kmaDays[date.replace(/-/g,"")]&&f.base?"기상청 단기예보 "+(+f.base.date.slice(4,6))+"/"+(+f.base.date.slice(6))+" "+f.base.time.slice(0,2)+"시 발표":"Open-Meteo 예보";
 async function fetchFcst(g,bt){
   if(!S.cfg.kma)throw new Error("기상청 서비스 키 없음");
   let key=S.cfg.kma.trim();if(/%[0-9A-Fa-f]{2}/.test(key)){try{key=decodeURIComponent(key)}catch(e){}}
@@ -639,14 +663,13 @@ function wxView(t,days){
 function drawWx(t){
   const box=$("wxBox");if(!box)return;
   const p=(t.items||[]).filter(i=>i.id===S.wxPlace)[0];
-  if(!S.cfg.kma){box.innerHTML='<div class="empty">날씨 예보는 가족 초대 링크로 설정하면 보여요.</div>';return}
   if(!p){box.innerHTML='<div class="empty">일정에 장소를 검색해서 넣으면<br>그곳의 시간대별 날씨가 나와요.</div>';return}
   const date=S.wxDay,my=drawToken;
   forecast(p.lat,p.lng).then(f=>{
     if(my!==drawToken||!box.isConnected)return;
     if(!f.ok){box.innerHTML='<div class="empty">'+esc(f.msg)+'</div>';return}
     const d=date.replace(/-/g,""),hrs=Object.keys(f.hours).filter(k=>k.slice(0,8)===d).sort();
-    if(!hrs.length){const last=Object.keys(f.hours).sort().pop();box.innerHTML='<div class="empty">아직 이 날의 예보가 나오지 않았어요.<br><span class="small">지금은 '+(last?(+last.slice(4,6))+'/'+(+last.slice(6,8))+'까지':'며칠 뒤까지')+' 예보가 나와 있어요. 여행일이 가까워지면 자동으로 보여요.</span></div>';return}
+    if(!hrs.length){const last=Object.keys(f.hours).sort().pop();box.innerHTML='<div class="empty">아직 이 날의 예보가 나오지 않았어요.<br><span class="small">예보는 약 2주 앞까지 나와요. 지금은 '+(last?(+last.slice(4,6))+'/'+(+last.slice(6,8))+'까지':'며칠 뒤까지')+' 나와 있어요.</span></div>';return}
     const rows=hrs.map(k=>{const h=f.hours[k],hr=+k.slice(8,10);return{hr,k:wxKind(h,hr),tmp:+h.TMP,pop:+h.POP||0,reh:+h.REH,wsd:+h.WSD,pcp:h.PCP,sky:skyText(h.SKY,h.PTY)}}).filter(r=>!isNaN(r.tmp));
     const s=daySummary(f,date)||{};
     const nowH=new Date().getHours(),isToday=date===today();
@@ -665,7 +688,7 @@ function drawWx(t){
       '<div class="wxstats num"><span>최저 <b>'+(s.tmn!=null?Math.round(s.tmn)+'°':'–')+'</b></span><span>최고 <b>'+(s.tmx!=null?Math.round(s.tmx)+'°':'–')+'</b></span><span>강수 <b>'+(s.pop!=null?s.pop+'%':'–')+'</b></span><span>습도 <b>'+(isNaN(avg(rows,"reh"))?'–':avg(rows,"reh")+'%')+'</b></span></div>'+
       '<p class="wxtip">'+esc(tip)+'</p></div>';
     html+='<div class="sec"><h2>시간대별</h2><span>옆으로 넘겨 보세요</span></div><div class="wxstrip" id="wxStrip"><div class="wxinner" style="width:'+n*W+'px">'+svg+'<div class="wxcols">'+rows.map(r=>'<div class="wxcol'+(r===cur?' on':'')+'"><span class="wxh num">'+(r.hr===nowH&&isToday?'지금':r.hr+'시')+'</span>'+wxIc(r.k)+'<span class="wxp num'+(r.pop>=40?' hi':'')+'">'+(r.pop?r.pop+'%':'')+'</span><span class="wxbarbox"><i class="wxbar" style="height:'+Math.max(2,r.pop*0.28)+'px"></i></span><span class="wxw num">'+(isNaN(r.wsd)?'':r.wsd.toFixed(0)+'m/s')+'</span></div>').join("")+'</div></div></div>';
-    html+='<p class="wx-src">기상청 단기예보 '+(+f.base.date.slice(4,6))+'/'+(+f.base.date.slice(6))+' '+f.base.time.slice(0,2)+'시 발표 · '+esc(p.title)+' 위치 기준</p>';
+    html+='<p class="wx-src">'+wxSrc(f,date)+' · '+esc(p.title)+' 위치 기준</p>';
     box.innerHTML=html;
     const st=$("wxStrip"),ci=rows.indexOf(cur);if(st&&ci>2)st.scrollLeft=(ci-2)*W;
     box.querySelectorAll(".wxcard,.sec,.wxstrip").forEach((e,i)=>{e.classList.add("rise");e.style.animationDelay=i*60+"ms"});
@@ -675,7 +698,6 @@ function wxPlace(t,date){const it=itemsOn(t,date).filter(hasXY);if(it.length)ret
 function fillWeather(t){
   document.querySelectorAll("[data-wxd]").forEach(el=>{
     const date=el.getAttribute("data-wxd"),p=wxPlace(t,date);
-    if(!S.cfg.kma){el.innerHTML=el.tagName==="P"?"":'<span class="muted">날씨는 가족 초대 링크로 설정하면 보여요</span>';return}
     if(!p){el.innerHTML='<span class="muted">장소를 검색해 추가하면 그 위치의 예보가 표시됩니다.</span>';return}
     el.innerHTML='<span class="muted">예보를 불러오는 중</span>';
     forecast(p.lat,p.lng).then(f=>{
@@ -684,10 +706,9 @@ function fillWeather(t){
       const s=daySummary(f,date);
       if(!s){el.innerHTML='<span class="muted">아직 단기예보 범위 밖입니다. 여행일이 가까워지면 표시됩니다.</span>';return}
       el.innerHTML='<b>'+esc(s.sky||"예보")+'</b>'+(s.tmn!=null?'<span class="num">'+Math.round(s.tmn)+' / '+Math.round(s.tmx)+'℃</span>':'')+(s.pop!=null?'<span class="num">강수확률 최대 '+s.pop+'%</span>':'')+
-        '<span class="wx-src">'+esc(p.title)+' 기준 · 기상청 단기예보 '+(+f.base.date.slice(4,6))+'/'+(+f.base.date.slice(6))+' '+f.base.time.slice(0,2)+'시 발표</span>';
+        '<span class="wx-src">'+esc(p.title)+' 기준 · '+wxSrc(f,date)+'</span>';
     });
   });
-  if(!S.cfg.kma)return;
   document.querySelectorAll("[data-wxi]").forEach(el=>{
     const it=(t.items||[]).filter(x=>x.id===el.getAttribute("data-wxi"))[0];
     if(!hasXY(it)||mins(it.time)==null)return;
@@ -979,7 +1000,7 @@ $("sTest").addEventListener("click",async()=>{
   const A={lat:37.5547,lng:126.9707},B={lat:37.5796,lng:126.9770};
   for(const m of ["car","traffic","walk"]){if(!n.rest){say(MOVE[m]+" 경로: REST 키 없음");continue}
     try{const r=await fetchRoute(A,B,m);say(MOVE[m]+" 경로: 정상 (서울역→경복궁 "+dur(r.min)+")")}catch(e){say(MOVE[m]+" 경로: 실패 — "+e.message+" (카카오맵 링크로 대체)")}}
-  if(!n.kma)say("기상청 예보: 서비스 키 없음");
+  if(!n.kma)say("기상청 예보: 서비스 키 없음 (Open-Meteo 예보로 대신 표시)");
   else{try{const f=await fetchFcst(grid(A.lat,A.lng),baseTime(Date.now()));say("기상청 예보: 정상 ("+Object.keys(f.hours).length+"시간분 수신)")}catch(e){say("기상청 예보: 실패 — "+e.message)}}
   say(n.fb?(col?"가족 공유: 연결됨":"가족 공유: 저장 후 연결됩니다"):"가족 공유: 구성 없음 (이 기기에만 저장)");
   S.cfg=keep;routeCache.clear();wxCache.clear();
