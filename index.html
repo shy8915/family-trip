@@ -391,7 +391,7 @@ pre:empty{display:none}
 <script>
 (function(){
 "use strict";
-const APP_VERSION="20261117174059";
+const APP_VERSION="20261117175325";
 const $=id=>document.getElementById(id);
 const KIND={sight:"관광",stay:"숙소",food:"식사",move:"이동",etc:"기타"};
 const MOVE={car:"자가용",traffic:"대중교통",walk:"도보"};
@@ -592,7 +592,9 @@ function wmo(c){ // WMO 날씨코드 → 기상청 SKY/PTY 형식
 }
 async function fetchOM(lat,lng){
   const u="https://api.open-meteo.com/v1/forecast?latitude="+lat.toFixed(4)+"&longitude="+lng.toFixed(4)+"&hourly=temperature_2m,precipitation_probability,weather_code,relative_humidity_2m,wind_speed_10m&wind_speed_unit=ms&timezone=Asia%2FSeoul&forecast_days=16";
-  const r=await fetch(u);if(!r.ok)throw new Error("HTTP "+r.status);
+  const ac=new AbortController(),to=setTimeout(()=>ac.abort(),8000);
+  let r;try{r=await fetch(u,{signal:ac.signal})}finally{clearTimeout(to)}
+  if(!r.ok)throw new Error("HTTP "+r.status);
   const j=await r.json(),H=j.hourly||{},hours={};
   (H.time||[]).forEach((t,i)=>{const k=t.slice(0,4)+t.slice(5,7)+t.slice(8,10)+t.slice(11,13)+"00",w=wmo(H.weather_code[i]);
     if(H.temperature_2m[i]==null)return;
