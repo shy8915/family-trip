@@ -383,7 +383,7 @@ pre:empty{display:none}
   <fieldset><legend>가족 공유 (Firebase)</legend>
     <label>Firebase 웹 앱 구성 (콘솔의 firebaseConfig 붙여넣기)<textarea id="sFb" spellcheck="false" placeholder='apiKey: "...", authDomain: "...", projectId: "...", appId: "..."'></textarea></label>
     <label>가족 코드 (같은 코드를 쓰는 기기끼리 공유)<input id="sFam" autocomplete="off" spellcheck="false"></label>
-    <button type="button" class="btn" id="sInvite">가족 초대 링크 복사</button>
+    <button type="button" class="btn" id="sInvite">가족 초대하기</button>
     <p class="small muted">초대 링크에는 위 키가 모두 담깁니다. 가족에게만 보내세요.</p>
   </fieldset>
   <fieldset><legend>점검·백업</legend>
@@ -405,7 +405,7 @@ pre:empty{display:none}
 <script>
 (function(){
 "use strict";
-const APP_VERSION="20261118085802";
+const APP_VERSION="20261118150508";
 const $=id=>document.getElementById(id);
 const KIND={sight:"관광",stay:"숙소",food:"식사",move:"이동",etc:"기타"};
 const MOVE={car:"자가용",traffic:"대중교통",walk:"도보"};
@@ -1031,7 +1031,9 @@ $("sInvite").addEventListener("click",()=>{
   const n=readSettings();if(!n)return;$("sFam").value=n.fam;
   if(!n.fb){$("sErr").textContent="가족 공유를 쓰려면 Firebase 구성을 먼저 넣어 주세요.";return}
   const code=btoa(unescape(encodeURIComponent(JSON.stringify(n)))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-  copy(location.origin+location.pathname+"#join="+code,"초대 링크를 복사했습니다. 저장을 눌러 이 기기에도 적용하세요.");
+  const link=location.origin+location.pathname+"#join="+code;
+  if(navigator.share&&/Android|iPhone|iPad/i.test(navigator.userAgent)){navigator.share({title:"우리 가족 여행수첩 초대",text:"링크를 열고 [저장]을 누르면 같은 여행 일정을 같이 볼 수 있어요.",url:link}).catch(()=>{})}
+  else copy(link,"초대 링크를 복사했습니다. 가족에게 보내 주세요.");
 });
 $("sUpd").addEventListener("click",()=>checkUpdate(true));
 $("sTest").addEventListener("click",async()=>{
